@@ -1576,6 +1576,7 @@ function M.process_patch(patch)
   -- The 'after' values is the sum of 3 lead context lines, the number of + lines and the 3 trailing lines.
   -- In some cases there are additional intermediate context lines which are also added to those numbers.
   -- So the total number of lines displayed is commonly neither of the no-of-lines values!
+  -- A no-of-lines of 1 is omitted on either side (e.g. `@@ -1 +1,4 @@`).
 
   if not patch then
     return
@@ -1586,22 +1587,15 @@ function M.process_patch(patch)
   local hunk_strings = vim.split(patch:gsub("^@@", ""), "\n@@")
   for _, hunk in ipairs(hunk_strings) do
     local header = vim.split(hunk, "\n")[1]
-    ---@type integer?, integer?, integer, integer, integer, integer
-    local found, _, left_start, left_length, right_start, right_length =
-      string.find(header, "^%s*%-(%d+),(%d+)%s+%+(%d+),(%d+)%s*@@")
-    if found then
+    ---@type string?, string, string?, string
+    local left_start, left_length, right_start, right_length =
+      header:match "^%s*%-(%d+),?(%d*)%s+%+(%d+),?(%d*)%s*@@"
+    if left_start and right_start then
+      local ls, rs = tonumber(left_start) --[[@as integer]], tonumber(right_start) --[[@as integer]]
+      local ll, rl = tonumber(left_length) or 1, tonumber(right_length) or 1
       table.insert(hunks, hunk)
-      table.insert(left_ranges, { tonumber(left_start), math.max(left_start + left_length - 1, 0) })
-      table.insert(right_ranges, { tonumber(right_start), math.max(right_start + right_length - 1, 0) })
-    else
-      ---@type integer?, integer?, integer, integer, integer
-      found, _, left_start, left_length, right_start = string.find(header, "^%s*%-(%d+),(%d+)%s+%+(%d+)%s*@@")
-      if found then
-        right_length = right_start + 1
-        table.insert(hunks, hunk)
-        table.insert(left_ranges, { tonumber(left_start), math.max(left_start + left_length - 1, 0) })
-        table.insert(right_ranges, { tonumber(right_start), math.max(right_start + right_length - 1, 0) })
-      end
+      table.insert(left_ranges, { ls, math.max(ls + ll - 1, 0) })
+      table.insert(right_ranges, { rs, math.max(rs + rl - 1, 0) })
     end
   end
   return hunks, left_ranges, right_ranges
