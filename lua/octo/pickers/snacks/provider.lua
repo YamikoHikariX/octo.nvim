@@ -13,6 +13,18 @@ local bubbles = require "octo.ui.bubbles"
 
 local M = {}
 
+---Append an issue/PR's labels to a picker row as label bubbles.
+---@param ret snacks.picker.Highlight[]
+---@param item { labels?: { nodes: { name: string, color: string }[] } }
+local function add_label_bubbles(ret, item)
+  for _, label in ipairs(vim.tbl_get(item, "labels", "nodes") or {}) do
+    ret[#ret + 1] = { " " }
+    for _, part in ipairs(bubbles.make_label_bubble(label.name, label.color)) do
+      ret[#ret + 1] = part
+    end
+  end
+end
+
 function M.not_implemented()
   utils.error "Not implemented yet"
 end
@@ -133,6 +145,8 @@ function M.issues(opts)
               ret[#ret + 1] = { " " }
 
               ret[#ret + 1] = { item.title }
+
+              add_label_bubbles(ret, item)
 
               return ret
             end,
@@ -304,6 +318,7 @@ function M.pull_requests(opts)
               ret[#ret + 1] = { string.format("#%d", item.number), "Comment" }
               ret[#ret + 1] = { (" "):rep(#tostring(max_number) - #tostring(item.number) + 1) }
               ret[#ret + 1] = { item.title, "Normal" }
+              add_label_bubbles(ret, item)
               local stack_indicator = utils.get_stack_indicator(item)
               if stack_indicator then
                 ret[#ret + 1] = { "  " .. stack_indicator, "Comment" }

@@ -586,6 +586,7 @@ query(
         repository { nameWithOwner }
         state
         stateReason
+        labels(first: 20) { nodes { name color } }
       }
       pageInfo {
         hasNextPage
@@ -630,6 +631,7 @@ query(
         isInMergeQueue
         {stackSummary}
         state
+        labels(first: 20) { nodes { name color } }
       }
       pageInfo {
         hasNextPage
