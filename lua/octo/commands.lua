@@ -27,6 +27,23 @@ OctoLastCmdOpts = nil
 
 local M = {}
 
+-- Refresh a buffer after a gh CLI action (merge, ready/draft). The CLI returns no
+-- object, so write_state alone would redraw the stale cached state: reload from
+-- GitHub instead, unless the buffer has unsaved edits.
+---@param bufnr integer
+local function refresh_after_cli_action(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) or not octo_buffers[bufnr] then
+    return
+  end
+  if vim.bo[bufnr].modified then
+    writers.write_state(bufnr)
+    return
+  end
+  vim.api.nvim_buf_call(bufnr, function()
+    require("octo").load_buffer { bufnr = bufnr }
+  end)
+end
+
 -- Helper function to extract hostname from octo:// buffer URL
 local function get_hostname_from_buffer()
   local bufname = vim.fn.bufname()
@@ -2093,7 +2110,7 @@ function M.gh_pr_ready(opts)
         -- There seems to be something wrong with the CLI output. It comes back as stderr
         failure = function(output)
           utils.info(output)
-          writers.write_state(opts.bufnr)
+          refresh_after_cli_action(opts.bufnr)
         end,
         success = utils.error,
       },
@@ -2355,7 +2372,7 @@ function M.merge_pr_stack(...)
       else
         utils.error(select_message(stderr, output, "Failed to merge stack"))
       end
-      writers.write_state(buffer.bufnr)
+      refresh_after_cli_action(buffer.bufnr)
     end,
   }
 
@@ -2429,7 +2446,7 @@ function M.merge_pr(...)
       else
         utils.error(select_message(stderr, output, "Failed to merge pull request"))
       end
-      writers.write_state(buffer.bufnr)
+      refresh_after_cli_action(buffer.bufnr)
     end,
   }
 
