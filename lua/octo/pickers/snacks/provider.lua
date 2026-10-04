@@ -13,13 +13,38 @@ local bubbles = require "octo.ui.bubbles"
 
 local M = {}
 
----Append an issue/PR's labels to a picker row as label bubbles.
+---Append an issue/PR's title and its labels (as label bubbles) to a picker row.
+---A long title is truncated so that at least the first label fits in the list window.
 ---@param ret snacks.picker.Highlight[]
----@param item { labels?: { nodes: { name: string, color: string }[] } }
-local function add_label_bubbles(ret, item)
-  for _, label in ipairs(vim.tbl_get(item, "labels", "nodes") or {}) do
+---@param item { title: string, labels?: { nodes: { name: string, color: string }[] } }
+---@param picker? snacks.Picker
+---@param title_hl? string
+local function add_title_and_labels(ret, item, picker, title_hl)
+  local labels = {} ---@type snacks.picker.Highlight[][]
+  for i, label in ipairs(vim.tbl_get(item, "labels", "nodes") or {}) do
+    labels[i] = bubbles.make_label_bubble(label.name, label.color)
+  end
+
+  local title = item.title or ""
+  local win = vim.tbl_get(picker or {}, "list", "win", "win")
+  if #labels > 0 and win and vim.api.nvim_win_is_valid(win) then
+    local info = vim.fn.getwininfo(win)[1]
+    local available = info.width - info.textoff - 1 -- 1: slack for icons drawn 2 cells wide
+    local used = 0
+    for _, part in ipairs(ret) do
+      used = used + vim.api.nvim_strwidth(part[1] or "")
+    end
+    local first_label = 1 -- separating space
+    for _, part in ipairs(labels[1]) do
+      first_label = first_label + vim.api.nvim_strwidth(part[1])
+    end
+    title = Snacks.picker.util.truncate(title, math.max(available - used - first_label, 10))
+  end
+
+  ret[#ret + 1] = { title, title_hl }
+  for _, parts in ipairs(labels) do
     ret[#ret + 1] = { " " }
-    for _, part in ipairs(bubbles.make_label_bubble(label.name, label.color)) do
+    for _, part in ipairs(parts) do
       ret[#ret + 1] = part
     end
   end
@@ -127,7 +152,7 @@ function M.issues(opts)
           Snacks.picker.pick {
             title = preview_title,
             items = issues,
-            format = function(item, _)
+            format = function(item, picker)
               local a = Snacks.picker.util.align
               ---@type snacks.picker.Highlight[]
               local ret = {}
@@ -144,9 +169,7 @@ function M.issues(opts)
 
               ret[#ret + 1] = { " " }
 
-              ret[#ret + 1] = { item.title }
-
-              add_label_bubbles(ret, item)
+              add_title_and_labels(ret, item, picker)
 
               return ret
             end,
@@ -310,15 +333,14 @@ function M.pull_requests(opts)
           Snacks.picker.pick {
             title = preview_title,
             items = pull_requests,
-            format = function(item, _)
+            format = function(item, picker)
               ---@type snacks.picker.Highlight[]
               local ret = {}
               ---@diagnostic disable-next-line: assign-type-mismatch
               ret[#ret + 1] = utils.get_icon { kind = item.kind, obj = item }
               ret[#ret + 1] = { string.format("#%d", item.number), "Comment" }
               ret[#ret + 1] = { (" "):rep(#tostring(max_number) - #tostring(item.number) + 1) }
-              ret[#ret + 1] = { item.title, "Normal" }
-              add_label_bubbles(ret, item)
+              add_title_and_labels(ret, item, picker, "Normal")
               local stack_indicator = utils.get_stack_indicator(item)
               if stack_indicator then
                 ret[#ret + 1] = { "  " .. stack_indicator, "Comment" }
@@ -1075,7 +1097,7 @@ function M.search(opts)
     Snacks.picker.pick {
       title = opts.preview_title or "GitHub Search Results",
       items = search_results,
-      format = function(item, _)
+      format = function(item, picker)
         local a = Snacks.picker.util.align
         local ret = {} ---@type snacks.picker.Highlight[]
 
@@ -1091,9 +1113,7 @@ function M.search(opts)
 
         ret[#ret + 1] = { " " }
 
-        ret[#ret + 1] = { item.title }
-
-        add_label_bubbles(ret, item)
+        add_title_and_labels(ret, item, picker)
 
         if item.kind == "discussion" and item.category then
           ret[#ret + 1] = { " [" .. item.category.name .. "]", "SnacksPickerSpecial" }
