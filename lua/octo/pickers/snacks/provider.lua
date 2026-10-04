@@ -1093,6 +1093,8 @@ function M.search(opts)
 
         ret[#ret + 1] = { item.title }
 
+        add_label_bubbles(ret, item)
+
         if item.kind == "discussion" and item.category then
           ret[#ret + 1] = { " [" .. item.category.name .. "]", "SnacksPickerSpecial" }
         end

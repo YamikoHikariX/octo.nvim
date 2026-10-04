@@ -662,6 +662,7 @@ query($prompt: String!, $type: SearchType = ISSUE, $last: Int = 100) {
         state
         repository { nameWithOwner }
         stateReason
+        labels(first: 20) { nodes { name color } }
       }
       ... on PullRequest {
         __typename
@@ -673,6 +674,7 @@ query($prompt: String!, $type: SearchType = ISSUE, $last: Int = 100) {
         isInMergeQueue
         {stackSummary}
         repository { nameWithOwner }
+        labels(first: 20) { nodes { name color } }
       }
       ... on Discussion {
         __typename
