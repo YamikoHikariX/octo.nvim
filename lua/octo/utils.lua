@@ -1409,9 +1409,11 @@ end
 function M.clear_history()
   ---@type integer
   local old_undolevels = vim.o.undolevels
+  local was_modified = vim.bo.modified
   vim.o.undolevels = -1
   vim.cmd [[exe "normal a \<BS>"]]
   vim.o.undolevels = old_undolevels
+  vim.bo.modified = was_modified
 end
 
 ---@param value number
