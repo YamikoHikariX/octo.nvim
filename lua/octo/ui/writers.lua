@@ -1115,6 +1115,26 @@ function M.write_details(bufnr, issue, update, include_status)
   end
   if is_issue then
     table.insert(details, issue_type_vt)
+
+    -- closing pull requests
+    local closing_prs = issue.closedByPullRequestsReferences
+    if closing_prs and closing_prs.totalCount > 0 then
+      local label = "Development: "
+      for i, pr in ipairs(closing_prs.nodes) do
+        local icon = utils.get_icon { kind = "pull_request", obj = pr }
+        table.insert(details, {
+          { i == 1 and label or string.rep(" ", #label), "OctoDetailsLabel" },
+          icon,
+          { " #" .. tostring(pr.number) .. " " .. pr.title, "OctoDetailsValue" },
+        })
+      end
+      if closing_prs.totalCount > #closing_prs.nodes then
+        table.insert(details, {
+          { string.rep(" ", #label), "OctoDetailsLabel" },
+          { string.format("… and %d more", closing_prs.totalCount - #closing_prs.nodes), "OctoMissingDetails" },
+        })
+      end
+    end
   end
 
   -- additional details for pull requests
