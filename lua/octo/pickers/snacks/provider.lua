@@ -465,12 +465,15 @@ function M.notifications(opts)
                 format = { id = item.id },
                 opts = {
                   headers = { headers.diff },
-                  cb = gh.create_callback { success = function() end },
+                  cb = gh.create_callback {
+                    success = function()
+                      M.notifications(opts)
+                    end,
+                  },
                 },
               }
               -- TODO: No current way to redraw the list/remove just this item
               picker:close()
-              M.notifications(opts)
             end
           end
           -- Use the default mapping from the main config section for 'read'
