@@ -376,6 +376,9 @@ return {
   goto_check = function()
     require("octo.navigation").go_to_check()
   end,
+  goto_closing_pr = function()
+    require("octo.navigation").go_to_closing_pr()
+  end,
   toggle_checks = function()
     require("octo.navigation").toggle_checks()
   end,

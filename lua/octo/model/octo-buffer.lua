@@ -17,12 +17,17 @@ local M = {}
 
 ---@alias octo.NodeKind "issue" | "pull" | "discussion" | "repo" | "release"
 
+---@class octo.ClosingPullRequest
+---@field number integer
+---@field title string
+
 ---@class OctoBuffer
 ---@field bufnr integer
 ---@field number integer
 ---@field repo string
 ---@field checkByLine? table<integer, octo.StatusCheckRollupContext> buffer line -> CI check (PR buffers)
 ---@field checksFold? octo.ChecksFold fold covering the CI checks list (PR buffers)
+---@field closingPrs? octo.ClosingPullRequest[] PRs that close the issue (issue buffers)
 ---@field kind octo.NodeKind|"reviewthread"
 ---@field titleMetadata TitleMetadata
 ---@field bodyMetadata BodyMetadata

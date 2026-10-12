@@ -402,6 +402,7 @@ require"octo".setup {
       add_label = { lhs = "<localleader>la", desc = "add label" },
       remove_label = { lhs = "<localleader>ld", desc = "remove label" },
       goto_issue = { lhs = "<localleader>gi", desc = "navigate to a local repo issue" },
+      goto_closing_pr = { lhs = "<localleader>gp", desc = "open a pull request that closes the issue" },
       add_comment = { lhs = "<localleader>ca", desc = "add comment" },
       add_reply = { lhs = "<localleader>cr", desc = "add reply" },
       delete_comment = { lhs = "<localleader>cd", desc = "delete comment" },
