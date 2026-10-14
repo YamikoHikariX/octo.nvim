@@ -94,6 +94,36 @@ function M.go_to_check(line)
   M.open_in_browser_raw(url)
 end
 
+---Open the pull request that closes the current issue, picking from a list
+---when there are several.
+function M.go_to_closing_pr()
+  local buffer = utils.get_current_buffer()
+  if not buffer or not buffer:isIssue() then
+    return
+  end
+  local prs = buffer.closingPrs or {}
+  if #prs == 0 then
+    utils.info "No pull request closes this issue"
+    return
+  end
+
+  local repo = buffer.repo
+  if #prs == 1 then
+    utils.get_pull_request(prs[1].number, repo)
+    return
+  end
+  vim.ui.select(prs, {
+    prompt = "Closing pull request",
+    format_item = function(pr)
+      return "#" .. tostring(pr.number) .. " " .. pr.title
+    end,
+  }, function(pr)
+    if pr then
+      utils.get_pull_request(pr.number, repo)
+    end
+  end)
+end
+
 --[[
 Opens a url in your default browser, bypassing gh.
 

@@ -358,6 +358,7 @@ query($endCursor: String) {
   ---@field timelineItems octo.IssueTimelineItemConnection
   ---@field labels octo.fragments.LabelConnection
   ---@field assignees octo.fragments.AssigneeConnection
+  ---@field closedByPullRequestsReferences? { totalCount: integer, nodes: octo.fragments.PullRequest[] }
   ---@field viewerCanSubscribe boolean
   ---@field viewerSubscription octo.SubscriptionState
 
@@ -395,6 +396,10 @@ query($endCursor: String) {
       }
       blocking(first: 10) {
         nodes { ...IssueFields }
+      }
+      closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+        totalCount
+        nodes { ...PullRequestFields }
       }
       viewerCanSubscribe
       viewerSubscription

@@ -965,6 +965,7 @@ function M.write_details(bufnr, issue, update, include_status)
   local check_by_index = {} ---@type table<integer, octo.StatusCheckRollupContext> detail index -> check
   local checks_summary_index ---@type integer? detail index of the "Checks:" summary
   local checks_last_index ---@type integer? detail index of the last check
+  local closing_prs = {} ---@type octo.ClosingPullRequest[]
 
   if include_status then
     add_status_detail(details, is_issue, issue.state, issue.stateReason, issue.isDraft, issue.isInMergeQueue)
@@ -1115,6 +1116,27 @@ function M.write_details(bufnr, issue, update, include_status)
   end
   if is_issue then
     table.insert(details, issue_type_vt)
+
+    -- closing pull requests
+    local closing_refs = issue.closedByPullRequestsReferences
+    if closing_refs and closing_refs.totalCount > 0 then
+      local development_vt = { { "Development: ", "OctoDetailsLabel" } }
+      for _, pr in ipairs(closing_refs.nodes) do
+        local state = utils.get_displayed_state(false, pr.state, nil, pr.isDraft)
+        vim.list_extend(
+          development_vt,
+          bubbles.make_bubble("#" .. tostring(pr.number), utils.state_hl_map[state] .. "Bubble", { right_margin_width = 1 })
+        )
+        table.insert(closing_prs, { number = pr.number, title = pr.title })
+      end
+      if closing_refs.totalCount > #closing_refs.nodes then
+        table.insert(
+          development_vt,
+          { string.format("+%d more", closing_refs.totalCount - #closing_refs.nodes), "OctoMissingDetails" }
+        )
+      end
+      table.insert(details, development_vt)
+    end
   end
 
   -- additional details for pull requests
@@ -1328,6 +1350,7 @@ function M.write_details(bufnr, issue, update, include_status)
   local buffer = octo_buffers[bufnr]
   if buffer then
     buffer.checkByLine = check_by_line
+    buffer.closingPrs = closing_prs
     -- a long list of checks costs more screen than it is worth, so it is folded
     -- away behind its summary until asked for, and stays as the reader left it
     buffer.checksFold = nil
