@@ -150,6 +150,9 @@ local function get_hl_links()
   }
 end
 
+-- Groups made by create_highlight (label colors), re-applied by setup: :colorscheme clears them too
+local CREATED_HIGHLIGHTS = {} ---@type table<string, vim.api.keyset.highlight>
+
 function M.setup()
   for name, hl in pairs(get_hl_groups()) do
     hl.default = true
@@ -158,6 +161,10 @@ function M.setup()
 
   for from, to in pairs(get_hl_links()) do
     vim.api.nvim_set_hl(0, "Octo" .. from, { link = to, default = true })
+  end
+
+  for name, hl in pairs(CREATED_HIGHLIGHTS) do
+    vim.api.nvim_set_hl(0, name, hl)
   end
 end
 
@@ -217,8 +224,9 @@ function M.create_highlight(rgb_hex, options)
     end
     -- Create the highlight
     highlight_name = make_highlight_name(rgb_hex, mode)
+    local hl ---@type vim.api.keyset.highlight
     if mode == "foreground" then
-      vim.api.nvim_set_hl(0, highlight_name, { fg = "#" .. rgb_hex })
+      hl = { fg = "#" .. rgb_hex }
     else
       local r_str, g_str, b_str = rgb_hex:sub(1, 2), rgb_hex:sub(3, 4), rgb_hex:sub(5, 6)
       local r, g, b = tonumber(r_str, 16), tonumber(g_str, 16), tonumber(b_str, 16)
@@ -228,8 +236,10 @@ function M.create_highlight(rgb_hex, options)
       else
         fg_color = "ffffff"
       end
-      vim.api.nvim_set_hl(0, highlight_name, { fg = "#" .. fg_color, bg = "#" .. rgb_hex })
+      hl = { fg = "#" .. fg_color, bg = "#" .. rgb_hex }
     end
+    vim.api.nvim_set_hl(0, highlight_name, hl)
+    CREATED_HIGHLIGHTS[highlight_name] = hl
     HIGHLIGHT_CACHE[cache_key] = highlight_name
   end
   return highlight_name
