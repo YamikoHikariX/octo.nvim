@@ -360,6 +360,86 @@ function M.pull_requests(opts)
   }
 end
 
+---Mark the selected notifications (or the one under the cursor) on GitHub and update the open
+---picker in place, so it keeps its layout and cursor. A row GitHub refuses comes back.
+---@param picker snacks.Picker
+---@param method "patch"|"delete" patch marks read, delete marks done
+---@param keep_rows boolean? leave the rows listed and only show them as read
+local function mark_notifications(picker, method, keep_rows)
+  local ids = {}
+  for _, item in ipairs(picker:selected { fallback = true }) do
+    ids[item.id] = true
+  end
+
+  local items = picker.opts.items
+  local rows = vim.tbl_filter(function(row)
+    return ids[row.id]
+  end, items)
+
+  for _, row in ipairs(rows) do
+    local status = row.status
+    gh.api[method] {
+      "/notifications/threads/{id}",
+      format = { id = row.id },
+      opts = {
+        headers = { headers.diff },
+        cb = gh.create_callback {
+          success = function() end,
+          failure = function(stderr)
+            utils.error(stderr)
+            if picker.closed then
+              return
+            end
+            row.status = status
+            if not keep_rows then
+              table.insert(items, row)
+              table.sort(items, function(a, b)
+                return a.position < b.position
+              end)
+            end
+            picker:refresh()
+          end,
+        },
+      },
+    }
+  end
+
+  if keep_rows then
+    for _, row in ipairs(rows) do
+      row.status = "read"
+    end
+    picker:refresh()
+    return
+  end
+
+  -- Aim for the row after the removed ones, counting only what the current filter shows
+  local list, above, shown = picker.list, 0, 0
+  for i = 1, list:count() do
+    local row = list:get(i)
+    if row and not ids[row.id] then
+      shown = shown + 1
+      if i < list.cursor then
+        above = above + 1
+      end
+    end
+  end
+
+  for i = #items, 1, -1 do
+    if ids[items[i].id] then
+      table.remove(items, i)
+    end
+  end
+
+  if #items == 0 then
+    utils.info "There are no notifications"
+    picker:close()
+    return
+  end
+
+  list:set_target(math.max(1, math.min(above + 1, shown)), nil, { force = true })
+  picker:refresh()
+end
+
 ---@param opts {
 ---  repo: string?,
 ---  all: boolean?,
@@ -418,6 +498,7 @@ function M.notifications(opts)
                   utils.get_pull_request_uri(notification.subject.number, notification.repository.full_name)
               end
               safe_notifications[#safe_notifications + 1] = notification
+              notification.position = #safe_notifications
             end
           end
 
@@ -494,21 +575,9 @@ function M.notifications(opts)
           end
 
           if not custom_actions_defined["mark_notification_read"] then
-            final_actions["mark_notification_read"] = function(picker, item)
-              gh.api.patch {
-                "/notifications/threads/{id}",
-                format = { id = item.id },
-                opts = {
-                  headers = { headers.diff },
-                  cb = gh.create_callback {
-                    success = function()
-                      M.notifications(opts)
-                    end,
-                  },
-                },
-              }
-              -- TODO: No current way to redraw the list/remove just this item
-              picker:close()
+            final_actions["mark_notification_read"] = function(picker)
+              -- Only the "all" list still shows read notifications
+              mark_notifications(picker, "patch", opts.all)
             end
           end
           -- Use the default mapping from the main config section for 'read'
@@ -518,6 +587,19 @@ function M.notifications(opts)
             and not final_keys[cfg.mappings.notification.read.lhs]
           then
             final_keys[cfg.mappings.notification.read.lhs] = { "mark_notification_read", mode = default_mode }
+          end
+
+          if not custom_actions_defined["mark_notification_done"] then
+            final_actions["mark_notification_done"] = function(picker)
+              mark_notifications(picker, "delete")
+            end
+          end
+          if
+            cfg.mappings.notification
+            and cfg.mappings.notification.done
+            and not final_keys[cfg.mappings.notification.done.lhs]
+          then
+            final_keys[cfg.mappings.notification.done.lhs] = { "mark_notification_done", mode = default_mode }
           end
 
           Snacks.picker.pick {
@@ -538,6 +620,9 @@ function M.notifications(opts)
             win = {
               input = {
                 keys = final_keys, -- Use the constructed keys map
+              },
+              list = {
+                keys = vim.deepcopy(final_keys), -- Moving the picker to a side (<C-w>H) leaves focus here
               },
             },
             actions = final_actions, -- Use the constructed actions map
