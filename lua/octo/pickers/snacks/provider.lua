@@ -402,23 +402,21 @@ function M.notifications(opts)
           local safe_notifications = {}
 
           for _, notification in ipairs(notifications) do
-            local safe = false
-            notification.subject.number = notification.subject.url:match "%d+$"
-            notification.text = string.format("#%d %s", notification.subject.number, notification.subject.title)
             notification.kind = notification.subject.type:lower()
             if notification.kind == "pullrequest" then
               notification.kind = "pull_request"
             end
-            notification.status = notification.unread and "unread" or "read"
-            if notification.kind == "issue" then
-              notification.file = utils.get_issue_uri(notification.subject.number, notification.repository.full_name)
-              safe = true
-            elseif notification.kind == "pull_request" then
-              notification.file =
-                utils.get_pull_request_uri(notification.subject.number, notification.repository.full_name)
-              safe = true
-            end
-            if safe then
+            -- Only issues and PRs are listed; other subjects (e.g. CheckSuite) can have a null url
+            if notification.kind == "issue" or notification.kind == "pull_request" then
+              notification.subject.number = notification.subject.url:match "%d+$"
+              notification.text = string.format("#%d %s", notification.subject.number, notification.subject.title)
+              notification.status = notification.unread and "unread" or "read"
+              if notification.kind == "issue" then
+                notification.file = utils.get_issue_uri(notification.subject.number, notification.repository.full_name)
+              else
+                notification.file =
+                  utils.get_pull_request_uri(notification.subject.number, notification.repository.full_name)
+              end
               safe_notifications[#safe_notifications + 1] = notification
             end
           end
